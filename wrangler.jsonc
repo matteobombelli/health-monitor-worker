@@ -1,0 +1,38 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "matteob-health-monitor",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-07-23",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"workers_dev": true,
+	"route": {
+		"pattern": "status.matteob.dev/*",
+		"zone_name": "matteob.dev"
+	},
+	"triggers": {
+		"crons": [
+			"*/5 * * * *"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "matteob-health-monitor",
+			"migrations_dir": "migrations",
+			"database_id": "60ce4676-c7b1-4329-93a1-1c9dafb77909"
+		}
+	],
+	"observability": {
+		"enabled": true,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1
+		},
+		"traces": {
+			"enabled": true,
+			"head_sampling_rate": 0.01
+		}
+	}
+}

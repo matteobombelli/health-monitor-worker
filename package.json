@@ -1,0 +1,22 @@
+{
+  "name": "matteob-health-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "npm run typegen && tsc --noEmit && vitest run",
+    "deploy": "wrangler deploy",
+    "deploy:dry": "wrangler deploy --dry-run",
+    "dev": "wrangler dev --test-scheduled",
+    "db:migrate:local": "wrangler d1 migrations apply matteob-health-monitor --local",
+    "db:migrate:remote": "wrangler d1 migrations apply matteob-health-monitor --remote",
+    "typegen": "wrangler types"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.18.7",
+    "@types/node": "latest",
+    "typescript": "^5.9.2",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.104.0"
+  }
+}
