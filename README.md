@@ -3,7 +3,7 @@
 This Worker hosts `https://status.matteob.dev` independently of the home
 server. A Cron Trigger checks the public endpoints every five minutes, D1
 stores 30 days of results, and the Worker serves both the status page and
-`/status.json`. Each service card includes a 30-day daily strip and a six-hour
+`/status.json`. Each service card includes a 30-day daily strip and a four-hour
 strip at five-minute resolution.
 
 The monitored endpoints are:

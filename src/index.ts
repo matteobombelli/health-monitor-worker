@@ -1,6 +1,7 @@
 import {
   DOMAIN_ID,
   ENDPOINTS,
+  RECENT_HOURS,
   WINDOW_DAYS,
   buildStatusModel,
   renderHtml,
@@ -223,7 +224,7 @@ async function loadStatus(db: D1Database): Promise<ReturnType<typeof buildStatus
          WHERE ts >= ?1
          ORDER BY ts`,
       )
-      .bind(Math.floor(now.getTime() / 1000) - 6 * 3600 - 300),
+      .bind(Math.floor(now.getTime() / 1000) - RECENT_HOURS * 3600 - 300),
     db.prepare("SELECT value FROM metadata WHERE key = 'monitoring_start'"),
   ]);
 

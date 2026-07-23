@@ -1,24 +1,24 @@
 export const WINDOW_DAYS = 30;
 export const CHECK_INTERVAL = 300;
-export const RECENT_HOURS = 6;
+export const RECENT_HOURS = 4;
 export const DOMAIN_ID = "__domain";
 
 export const ENDPOINTS = [
-  { id: "home", label: "matteob.dev", url: "https://matteob.dev" },
+  { id: "home", label: "Portfolio", url: "https://matteob.dev" },
   {
     id: "apps",
-    label: "apps.matteob.dev",
+    label: "Apps",
     url: "https://apps.matteob.dev",
     allowNotFound: true,
   },
   {
     id: "webtunes",
-    label: "apps.matteob.dev/projects/webtunes",
+    label: "WebTunes",
     url: "https://apps.matteob.dev/projects/webtunes",
   },
   {
     id: "ssh",
-    label: "ssh.matteob.dev",
+    label: "ssh",
     url: "https://ssh.matteob.dev",
   },
 ] as const;
@@ -81,7 +81,7 @@ interface EndpointModel {
   checks_30d: number;
   current: CurrentModel | null;
   days: DayModel[];
-  recent_6h: RecentSlotModel[];
+  recent_4h: RecentSlotModel[];
 }
 
 export interface StatusModel {
@@ -93,7 +93,7 @@ export interface StatusModel {
     uptime_30d_pct: number | null;
     runs_30d: number;
     days: DayModel[];
-    recent_6h: RecentSlotModel[];
+    recent_4h: RecentSlotModel[];
   };
   endpoints: EndpointModel[];
 }
@@ -282,7 +282,7 @@ export function buildStatusModel(
           }
         : null,
       days: stats.days,
-      recent_6h: recent.get(endpoint.id) ?? [],
+      recent_4h: recent.get(endpoint.id) ?? [],
     };
   });
 
@@ -295,7 +295,7 @@ export function buildStatusModel(
       uptime_30d_pct: roundPct(domainStats.totalPct),
       runs_30d: domainStats.checks,
       days: domainStats.days,
-      recent_6h: recent.get(DOMAIN_ID) ?? [],
+      recent_4h: recent.get(DOMAIN_ID) ?? [],
     },
     endpoints,
   };
@@ -351,7 +351,7 @@ function barStrip(days: DayModel[], label: string): string {
 }
 
 function recentStrip(slots: RecentSlotModel[], label: string): string {
-  const cells = slots
+  const dots = slots
     .map((slot) => {
       const state = slot.up === null ? "nodata" : slot.up ? "up" : "down";
       const timestamp = new Date(slot.checked_at).toISOString().slice(0, 16).replace("T", " ");
@@ -363,13 +363,13 @@ function recentStrip(slots: RecentSlotModel[], label: string): string {
               ? "operational"
               : "down or missing"
             : `${slot.up ? "up" : "down"}, HTTP ${slot.http_code}, ${slot.latency_ms} ms`;
-      return `<div class="cell ${state}" title="${escapeHtml(`${timestamp} UTC: ${detail}`)}"></div>`;
+      return `<span class="recent-dot ${state}" title="${escapeHtml(`${timestamp} UTC: ${detail}`)}"></span>`;
     })
     .join("");
-  return `<div class="recent-label">Last ${RECENT_HOURS} hours</div>
-  <div class="recent-bars" role="img" aria-label="${escapeHtml(
-    `Five-minute availability for ${label}, oldest to newest`,
-  )}">${cells}</div>
+
+  return `<div class="recent-dots" role="img" aria-label="${escapeHtml(
+    `Five-minute availability for ${label} over the last ${RECENT_HOURS} hours, oldest to newest`,
+  )}">${dots}</div>
   <div class="axis"><span>${RECENT_HOURS} hours ago</span><span>Now</span></div>`;
 }
 
@@ -443,17 +443,25 @@ h1 { font-size: 20px; font-weight: 650; }
 .ep-status { color: var(--ink-2); font-size: 13px; }
 .ep-pct { font-weight: 650; font-variant-numeric: tabular-nums; }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; align-self: center; }
-.dot.up, .cell.up { background: var(--up); }
+.dot.up, .cell.up, .recent-dot.up { background: var(--up); }
 .dot.partial, .cell.partial { background: var(--partial); }
-.dot.down, .cell.down { background: var(--down); }
+.dot.down, .cell.down, .recent-dot.down { background: var(--down); }
 .dot.nodata { background: var(--nodata); }
 .cell.nodata { background: transparent; box-shadow: inset 0 0 0 1px var(--hairline); }
 .bars { display: flex; gap: 2px; height: 26px; }
 .cell { flex: 1; border-radius: 2px; min-width: 0; }
-.recent-label { color: var(--ink-2); font-size: 12px; margin-top: 14px; }
-.recent-bars {
-  display: grid; grid-template-columns: repeat(72, minmax(1px, 1fr));
-  gap: 1px; height: 18px; margin-top: 5px;
+.recent-dots {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; height: 10px; margin-top: 14px;
+}
+.recent-dot {
+  display: block; flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%;
+}
+.recent-dot.nodata {
+  background: transparent; box-shadow: inset 0 0 0 1px var(--hairline);
+}
+@media (max-width: 420px) {
+  .recent-dot { flex-basis: 5px; width: 5px; height: 5px; }
 }
 .axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-top: 6px; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--ink-2); font-size: 13px; padding: 2px 4px; }
@@ -497,27 +505,18 @@ export function renderHtml(status: StatusModel): string {
     ? new Date(latestTs).toISOString().slice(0, 16).replace("T", " ") + " UTC"
     : "never";
 
-  const cards = [
-    endpointCard(
-      status.domain.label,
-      null,
-      status.domain.uptime_30d_pct,
-      status.domain.days,
-      status.domain.up_now,
-      status.domain.recent_6h,
-      "Up only when every endpoint below passed its check",
-    ),
-    ...status.endpoints.map((endpoint) =>
+  const cards = status.endpoints
+    .map((endpoint) =>
       endpointCard(
         endpoint.label,
         endpoint.url,
         endpoint.uptime_30d_pct,
         endpoint.days,
         endpoint.current?.up ?? null,
-        endpoint.recent_6h,
+        endpoint.recent_4h,
       ),
-    ),
-  ].join("");
+    )
+    .join("");
 
   const headings = status.endpoints
     .map((endpoint) => `<th>${escapeHtml(endpoint.label)}</th>`)

@@ -60,12 +60,24 @@ describe("status model", () => {
       "https://apps.matteob.dev/projects/webtunes",
       "https://ssh.matteob.dev",
     ]);
-    expect(status.endpoints.every((endpoint) => endpoint.recent_6h.length === 72)).toBe(
+    expect(status.endpoints.map((endpoint) => endpoint.label)).toEqual([
+      "Portfolio",
+      "Apps",
+      "WebTunes",
+      "ssh",
+    ]);
+    expect(status.endpoints.every((endpoint) => endpoint.recent_4h.length === 48)).toBe(
       true,
     );
     expect(html).toContain("All systems operational");
     expect(html).toContain('href="/status.json"');
     expect(html).toContain("Checked every 5 minutes from Cloudflare");
-    expect(html).toContain("Last 6 hours");
+    expect(html).not.toContain("Last 6 hours");
+    expect(html).not.toContain("matteob.dev (all endpoints)");
+    expect(html.match(/class="recent-dots"/g)).toHaveLength(4);
+    expect(html.match(/class="recent-dot (?:up|down|nodata)"/g)).toHaveLength(192);
+    expect(html).not.toContain('class="recent-bars"');
+    expect(html).not.toContain('class="recent-chart"');
+    expect(html).not.toContain('class="recent-rail"');
   });
 });
