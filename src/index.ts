@@ -19,6 +19,10 @@ interface ProbeResult {
   ms: number;
 }
 
+const PROBE_TIMEOUT_MS = 10_000;
+const SSH_IDENTIFICATION =
+  /(?:^|\r?\n)SSH-(?:1\.99|2\.0)-[^\r\n]+\r?\n/;
+
 const BASE_HEADERS = {
   "Cache-Control": "public, max-age=60, stale-while-revalidate=240",
   "Referrer-Policy": "no-referrer",
@@ -26,17 +30,80 @@ const BASE_HEADERS = {
   "X-Frame-Options": "DENY",
 } as const;
 
-async function probe(
+export function hasSshIdentification(value: string): boolean {
+  return SSH_IDENTIFICATION.test(value);
+}
+
+function elapsedSince(started: number): number {
+  return Math.round(performance.now() - started);
+}
+
+async function waitForSshIdentification(
+  webSocket: WebSocket,
+  timeoutMs: number,
+): Promise<boolean> {
+  webSocket.binaryType = "arraybuffer";
+  webSocket.accept();
+
+  return new Promise((resolve) => {
+    const decoder = new TextDecoder();
+    let received = "";
+    let settled = false;
+
+    const finish = (up: boolean): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      webSocket.removeEventListener("message", onMessage);
+      webSocket.removeEventListener("close", onClose);
+      webSocket.removeEventListener("error", onError);
+      if (webSocket.readyState === WebSocket.OPEN) {
+        webSocket.close(1000, "health check complete");
+      }
+      resolve(up);
+    };
+
+    const onMessage = (event: MessageEvent): void => {
+      const data: unknown = event.data;
+      if (typeof data === "string") {
+        received += data;
+      } else if (data instanceof ArrayBuffer) {
+        received += decoder.decode(data, { stream: true });
+      } else if (ArrayBuffer.isView(data)) {
+        received += decoder.decode(data, { stream: true });
+      } else {
+        finish(false);
+        return;
+      }
+
+      if (hasSshIdentification(received)) {
+        finish(true);
+      } else if (received.length > 8192) {
+        finish(false);
+      }
+    };
+
+    const onClose = (): void => finish(false);
+    const onError = (): void => finish(false);
+    const timeout = setTimeout(() => finish(false), timeoutMs);
+
+    webSocket.addEventListener("message", onMessage);
+    webSocket.addEventListener("close", onClose);
+    webSocket.addEventListener("error", onError);
+  });
+}
+
+async function probeHttp(
   endpoint: (typeof ENDPOINTS)[number],
 ): Promise<ProbeResult> {
   const started = performance.now();
   try {
     const response = await fetch(endpoint.url, {
       redirect: "follow",
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
       headers: { "User-Agent": "matteob-health-monitor/1.0" },
     });
-    const ms = Math.round(performance.now() - started);
+    const ms = elapsedSince(started);
     if (response.body !== null) await response.body.cancel();
     return {
       id: endpoint.id,
@@ -57,18 +124,82 @@ async function probe(
       url: endpoint.url,
       up: false,
       code: 0,
-      ms: 10_000,
+      ms: Math.min(PROBE_TIMEOUT_MS, elapsedSince(started)),
     };
   }
 }
 
+async function probeSsh(
+  endpoint: Extract<(typeof ENDPOINTS)[number], { probe: "ssh" }>,
+  env: Env,
+): Promise<ProbeResult> {
+  const started = performance.now();
+  try {
+    const response = await fetch(endpoint.url, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+      headers: {
+        Upgrade: "websocket",
+        "CF-Access-Client-Id": env.SSH_ACCESS_CLIENT_ID,
+        "CF-Access-Client-Secret": env.SSH_ACCESS_CLIENT_SECRET,
+        "User-Agent": "matteob-health-monitor/1.0",
+      },
+    });
+    const webSocket = response.webSocket;
+    if (webSocket === null) {
+      if (response.body !== null) await response.body.cancel();
+      return {
+        id: endpoint.id,
+        label: endpoint.label,
+        url: endpoint.url,
+        up: false,
+        code: response.status,
+        ms: elapsedSince(started),
+      };
+    }
+
+    const remainingMs = Math.max(
+      1,
+      PROBE_TIMEOUT_MS - elapsedSince(started),
+    );
+    const up = await waitForSshIdentification(webSocket, remainingMs);
+    return {
+      id: endpoint.id,
+      label: endpoint.label,
+      url: endpoint.url,
+      up,
+      code: response.status,
+      ms: Math.min(PROBE_TIMEOUT_MS, elapsedSince(started)),
+    };
+  } catch {
+    return {
+      id: endpoint.id,
+      label: endpoint.label,
+      url: endpoint.url,
+      up: false,
+      code: 0,
+      ms: Math.min(PROBE_TIMEOUT_MS, elapsedSince(started)),
+    };
+  }
+}
+
+async function probe(
+  endpoint: (typeof ENDPOINTS)[number],
+  env: Env,
+): Promise<ProbeResult> {
+  return "probe" in endpoint && endpoint.probe === "ssh"
+    ? probeSsh(endpoint, env)
+    : probeHttp(endpoint);
+}
+
 async function probeWithRetry(
   endpoint: (typeof ENDPOINTS)[number],
+  env: Env,
 ): Promise<ProbeResult> {
-  const first = await probe(endpoint);
+  const first = await probe(endpoint, env);
   if (first.up) return first;
   await scheduler.wait(5_000);
-  return probe(endpoint);
+  return probe(endpoint, env);
 }
 
 async function reconcileDay(db: D1Database, run: number): Promise<void> {
@@ -181,10 +312,15 @@ async function storeResults(
     .run();
 }
 
-async function runChecks(db: D1Database, scheduledTime: number): Promise<void> {
+async function runChecks(
+  env: Env,
+  scheduledTime: number,
+): Promise<void> {
   const run = Math.floor(scheduledTime / 1000);
-  const results = await Promise.all(ENDPOINTS.map(probeWithRetry));
-  await storeResults(db, run, results);
+  const results = await Promise.all(
+    ENDPOINTS.map((endpoint) => probeWithRetry(endpoint, env)),
+  );
+  await storeResults(env.DB, run, results);
   console.log(
     JSON.stringify({
       message: "health checks complete",
@@ -294,7 +430,7 @@ export default {
 
   async scheduled(controller, env): Promise<void> {
     try {
-      await runChecks(env.DB, controller.scheduledTime);
+      await runChecks(env, controller.scheduledTime);
     } catch (error) {
       console.error(
         JSON.stringify({

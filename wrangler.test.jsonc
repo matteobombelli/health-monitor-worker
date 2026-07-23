@@ -4,6 +4,10 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-23",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "SSH_ACCESS_CLIENT_ID": "test-client-id",
+    "SSH_ACCESS_CLIENT_SECRET": "test-client-secret"
+  },
   "d1_databases": [
     {
       "binding": "DB",

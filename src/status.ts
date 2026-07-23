@@ -20,6 +20,7 @@ export const ENDPOINTS = [
     id: "ssh",
     label: "ssh",
     url: "https://ssh.matteob.dev",
+    probe: "ssh",
   },
 ] as const;
 

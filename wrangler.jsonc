@@ -6,6 +6,12 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
+	"secrets": {
+		"required": [
+			"SSH_ACCESS_CLIENT_ID",
+			"SSH_ACCESS_CLIENT_SECRET"
+		]
+	},
 	"workers_dev": true,
 	"route": {
 		"pattern": "status.matteob.dev/*",
