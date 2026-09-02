@@ -204,6 +204,10 @@ async function probeWithRetry(
 
 async function reconcileDay(db: D1Database, run: number): Promise<void> {
   const day = new Date(run * 1000).toISOString().slice(0, 10);
+  // Range predicates on the raw columns let SQLite use the indexes; wrapping
+  // the column in date() forces a full scan of checks on every cron run.
+  const dayStart = Date.parse(`${day}T00:00:00Z`) / 1000;
+  const dayEnd = dayStart + 86_400;
   await db.batch([
     db.prepare("DELETE FROM daily WHERE day = ?1").bind(day),
     db
@@ -217,16 +221,16 @@ async function reconcileDay(db: D1Database, run: number): Promise<void> {
              CAST(ts / 300 AS INTEGER) AS slot,
              MAX(up) AS slot_up
            FROM checks
-           WHERE date(ts, 'unixepoch') = ?1
+           WHERE ts >= ?1 AND ts < ?2
            GROUP BY date(ts, 'unixepoch'), id, CAST(ts / 300 AS INTEGER)
          )
          GROUP BY day, id`,
       )
-      .bind(day),
+      .bind(dayStart, dayEnd),
     db
       .prepare(
         `INSERT INTO daily (day, id, slots_up, checks_recorded)
-         SELECT day, ?2, SUM(slot_up), COUNT(*)
+         SELECT day, ?3, SUM(slot_up), COUNT(*)
          FROM (
            SELECT day, slot, MAX(run_up) AS slot_up
            FROM (
@@ -236,18 +240,18 @@ async function reconcileDay(db: D1Database, run: number): Promise<void> {
                run,
                MIN(up) AS run_up
              FROM checks
-             WHERE date(run, 'unixepoch') = ?1
+             WHERE run >= ?1 AND run < ?2
              GROUP BY date(run, 'unixepoch'), CAST(run / 300 AS INTEGER), run
            )
            GROUP BY day, slot
          )
          GROUP BY day`,
       )
-      .bind(day, DOMAIN_ID),
+      .bind(dayStart, dayEnd, DOMAIN_ID),
   ]);
 }
 
-async function storeResults(
+export async function storeResults(
   db: D1Database,
   run: number,
   results: ProbeResult[],
