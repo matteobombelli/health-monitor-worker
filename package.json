@@ -10,13 +10,15 @@
     "dev": "wrangler dev --test-scheduled",
     "db:migrate:local": "wrangler d1 migrations apply matteob-health-monitor --local",
     "db:migrate:remote": "wrangler d1 migrations apply matteob-health-monitor --remote",
-    "typegen": "wrangler types"
+    "typegen": "wrangler types",
+    "icons": "node scripts/generate-icon.mjs"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.18.7",
     "@types/node": "latest",
     "typescript": "^5.9.2",
     "vitest": "^4.1.0",
-    "wrangler": "^4.104.0"
+    "wrangler": "^4.104.0",
+    "sharp": "^0.35.5"
   }
 }
