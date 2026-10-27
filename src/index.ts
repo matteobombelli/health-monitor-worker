@@ -1,6 +1,7 @@
 import {
   DOMAIN_ID,
   ENDPOINTS,
+  FAVICON_ICO_BASE64,
   ICON_SVG,
   RECENT_HOURS,
   WINDOW_DAYS,
@@ -30,6 +31,8 @@ const BASE_HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
 } as const;
+
+const FAVICON_ICO = Uint8Array.from(atob(FAVICON_ICO_BASE64), (c) => c.charCodeAt(0));
 
 export function hasSshIdentification(value: string): boolean {
   return SSH_IDENTIFICATION.test(value);
@@ -379,6 +382,9 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
   }
   if (url.pathname === "/icon.svg") {
     return response(request.method === "HEAD" ? null : ICON_SVG, "image/svg+xml");
+  }
+  if (url.pathname === "/favicon.ico") {
+    return response(request.method === "HEAD" ? null : FAVICON_ICO, "image/x-icon");
   }
   if (url.pathname === "/cdn-cgi/handler/scheduled") {
     return response(request.method === "HEAD" ? null : "Not Found", "text/plain; charset=utf-8", 404);
