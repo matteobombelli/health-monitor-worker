@@ -57,13 +57,19 @@ describe("status model", () => {
     expect(status.endpoints.map((endpoint) => endpoint.url)).toEqual([
       "https://matteob.dev",
       "https://apps.matteob.dev",
-      "https://apps.matteob.dev/projects/webtunes",
+      "https://webtunes.matteob.dev",
+      "https://todo.matteob.dev",
+      "https://vocab.matteob.dev",
+      "https://savethedate.matteob.dev",
       "https://ssh.matteob.dev",
     ]);
     expect(status.endpoints.map((endpoint) => endpoint.label)).toEqual([
       "Portfolio",
       "Apps",
       "WebTunes",
+      "Todo",
+      "Vocabulary",
+      "Save the Date",
       "ssh",
     ]);
     expect(status.endpoints.every((endpoint) => endpoint.recent_4h.length === 48)).toBe(
@@ -74,8 +80,8 @@ describe("status model", () => {
     expect(html).toContain("Checked every 5 minutes from Cloudflare");
     expect(html).not.toContain("Last 6 hours");
     expect(html).not.toContain("matteob.dev (all endpoints)");
-    expect(html.match(/class="recent-dots"/g)).toHaveLength(4);
-    expect(html.match(/class="recent-dot (?:up|down|nodata)"/g)).toHaveLength(192);
+    expect(html.match(/class="recent-dots"/g)).toHaveLength(ENDPOINTS.length);
+    expect(html.match(/class="recent-dot (?:up|down|nodata)"/g)).toHaveLength(ENDPOINTS.length * 48);
     expect(html).not.toContain('class="recent-bars"');
     expect(html).not.toContain('class="recent-chart"');
     expect(html).not.toContain('class="recent-rail"');
