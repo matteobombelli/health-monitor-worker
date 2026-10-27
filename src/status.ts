@@ -11,11 +11,10 @@ export const ENDPOINTS = [
     url: "https://apps.matteob.dev",
     allowNotFound: true,
   },
-  {
-    id: "webtunes",
-    label: "WebTunes",
-    url: "https://apps.matteob.dev/projects/webtunes",
-  },
+  { id: "webtunes", label: "WebTunes", url: "https://webtunes.matteob.dev" },
+  { id: "todo", label: "Todo", url: "https://todo.matteob.dev" },
+  { id: "vocab", label: "Vocabulary", url: "https://vocab.matteob.dev" },
+  { id: "savethedate", label: "Save the Date", url: "https://savethedate.matteob.dev" },
   {
     id: "ssh",
     label: "ssh",
@@ -25,6 +24,15 @@ export const ENDPOINTS = [
 ] as const;
 
 export type EndpointId = (typeof ENDPOINTS)[number]["id"];
+
+// Site icon: lucide "activity" in white on amber, on the same rounded-square template as the
+// other matteob.dev apps so the subdomains read as one family.
+export const ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">' +
+  '<rect width="512" height="512" rx="112.64" fill="#d97706"/>' +
+  '<g transform="translate(97.28 97.28) scale(13.226666666666667)" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>' +
+  "</g></svg>";
 
 export interface DailyDatabaseRow {
   day: string;
@@ -539,6 +547,7 @@ export function renderHtml(status: StatusModel): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>matteob.dev status</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
 <style>${CSS}</style>
 <body>
 <main>

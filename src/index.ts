@@ -1,6 +1,7 @@
 import {
   DOMAIN_ID,
   ENDPOINTS,
+  ICON_SVG,
   RECENT_HOURS,
   WINDOW_DAYS,
   buildStatusModel,
@@ -375,6 +376,9 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   if (url.pathname === "/robots.txt") {
     return response(request.method === "HEAD" ? null : "User-agent: *\nAllow: /\n", "text/plain; charset=utf-8");
+  }
+  if (url.pathname === "/icon.svg") {
+    return response(request.method === "HEAD" ? null : ICON_SVG, "image/svg+xml");
   }
   if (url.pathname === "/cdn-cgi/handler/scheduled") {
     return response(request.method === "HEAD" ? null : "Not Found", "text/plain; charset=utf-8", 404);

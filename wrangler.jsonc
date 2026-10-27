@@ -12,11 +12,13 @@
 			"SSH_ACCESS_CLIENT_SECRET"
 		]
 	},
-	"workers_dev": true,
-	"route": {
-		"pattern": "status.matteob.dev/*",
-		"zone_name": "matteob.dev"
-	},
+	"workers_dev": false,
+	"routes": [
+		{
+			"pattern": "status.matteob.dev",
+			"custom_domain": true
+		}
+	],
 	"triggers": {
 		"crons": [
 			"*/5 * * * *"

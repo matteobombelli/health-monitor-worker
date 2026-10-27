@@ -10,7 +10,10 @@ The monitored endpoints are:
 
 - `https://matteob.dev`
 - `https://apps.matteob.dev` (its intentional 404 response is healthy)
-- `https://apps.matteob.dev/projects/webtunes`
+- `https://webtunes.matteob.dev`
+- `https://todo.matteob.dev`
+- `https://vocab.matteob.dev`
+- `https://savethedate.matteob.dev`
 - `https://ssh.matteob.dev`
 
 The SSH check authenticates to Cloudflare Access, opens the Tunnel's WebSocket
@@ -18,10 +21,10 @@ carrier, and requires an SSH protocol identification such as `SSH-2.0-OpenSSH`.
 A connected Tunnel or a working Access login page is therefore not enough to
 mark SSH as healthy.
 
-The production route intentionally uses the existing proxied
-`status.matteob.dev` DNS record. Worker routes run before the Tunnel origin, so
-the status page remains available when the home server or Tunnel is down. A
-future DNS cleanup can replace the route with a Worker Custom Domain.
+The Worker owns `status.matteob.dev` as a Custom Domain, so the status page
+has no dependency on the home server or the Tunnel. `wrangler deploy` creates
+the DNS record and certificate; the hostname must not already have a DNS
+record (the old Tunnel public hostname was removed before the first deploy).
 
 ## Deploy from a clean clone
 
@@ -29,13 +32,12 @@ This runbook assumes you are deploying to the existing `matteob.dev` Cloudflare
 account. That account already has:
 
 - the `matteob-health-monitor` D1 database referenced by `wrangler.jsonc`;
-- a proxied `status.matteob.dev` DNS record for the Worker route;
 - a Tunnel published application for `ssh.matteob.dev` that routes to the SSH
   service; and
 - a self-hosted Cloudflare Access application covering `ssh.matteob.dev`.
 
 For a different account or domain, create equivalent resources and replace the
-account-specific database ID, route, hostnames, and endpoint URLs in this
+account-specific database ID, Custom Domain, hostnames, and endpoint URLs in this
 repository before continuing.
 
 ### 1. Install prerequisites and clone
@@ -153,7 +155,7 @@ target database shown by Wrangler before confirming:
 npm run db:migrate:remote
 ```
 
-Deploy the Worker, route, and five-minute Cron Trigger:
+Deploy the Worker, its Custom Domain, and the five-minute Cron Trigger:
 
 ```bash
 npm run deploy
